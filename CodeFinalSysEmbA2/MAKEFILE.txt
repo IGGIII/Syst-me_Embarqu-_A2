@@ -1,0 +1,49 @@
+# === USER CONFIGURATION ===
+BOARD_MCU = atmega328p
+F_CPU = 16000000UL
+PORT = COM3
+BAUD = 115200
+ARDUINO_PATH = C:\Program Files (x86)\Arduino
+CORE_PATH = $(ARDUINO_PATH)\hardware\arduino\avr\cores\arduino
+VARIANT_PATH = $(ARDUINO_PATH)\hardware\arduino\avr\variants\standard
+TOOLCHAIN = $(ARDUINO_PATH)\hardware\tools\avr\bin
+
+# === FILE NAMES ===
+TARGET = sketch
+SRC = $(TARGET).cpp
+
+# === TOOLS ===
+CC = "$(TOOLCHAIN)\avr-g++"
+LD = "$(TOOLCHAIN)\avr-gcc"
+OBJCOPY = "$(TOOLCHAIN)\avr-objcopy"
+AVRDUDE = "$(TOOLCHAIN)\avrdude"
+CORE_LIB = "$(CORE_PATH)\core.a"
+
+# === FLAGS ===
+CFLAGS = -mmcu=$(BOARD_MCU) -DF_CPU=$(F_CPU) -Os -I"$(CORE_PATH)" -I"$(VARIANT_PATH)"
+LDFLAGS = -mmcu=$(BOARD_MCU)
+
+# === TARGETS ===
+all: $(TARGET).hex
+
+$(TARGET).o: $(SRC)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(TARGET).elf: $(TARGET).o
+	$(LD) $(LDFLAGS) $(TARGET).o $(CORE_LIB) -o $(TARGET).elf
+
+$(TARGET).hex: $(TARGET).elf
+	$(OBJCOPY) -O ihex -R .eeprom $(TARGET).elf $(TARGET).hex
+
+upload: $(TARGET).hex
+	$(AVRDUDE) -c arduino -p $(BOARD_MCU) -P $(PORT) -b $(BAUD) -U flash:w:$(TARGET).hex
+
+clean:
+	del /f /q *.o *.elf *.hex 2>nul || true
+
+# === DISPLAY HELP ===
+help:
+	@echo "Usage:"
+	@echo "  make           -> Compile and build .hex file"
+	@echo "  make upload    -> Upload .hex to Arduino"
+	@echo "  make clean     -> Remove build files"

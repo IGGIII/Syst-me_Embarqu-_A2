@@ -1,0 +1,69 @@
+#!/bin/bash
+# Script de compilation et téléversement Arduino
+# Équivalent du Makefile
+
+# === CONFIGURATION ===
+BOARD_MCU="atmega328p"
+F_CPU="16000000UL"
+PORT="/dev/ttyUSB0"      # Ex: COM3 sous Windows → /dev/ttyUSB0 sous Linux
+BAUD="115200"
+ARDUINO_PATH="/usr/share/arduino"   # Adapter selon ton installation
+CORE_PATH="$ARDUINO_PATH/hardware/arduino/avr/cores/arduino"
+VARIANT_PATH="$ARDUINO_PATH/hardware/arduino/avr/variants/standard"
+TOOLCHAIN="$ARDUINO_PATH/hardware/tools/avr/bin"
+
+# === FICHIERS ===
+TARGET="sketch"
+SRC="$TARGET.cpp"
+CORE_LIB="$CORE_PATH/core.a"
+
+# === OUTILS ===
+CC="$TOOLCHAIN/avr-g++"
+LD="$TOOLCHAIN/avr-gcc"
+OBJCOPY="$TOOLCHAIN/avr-objcopy"
+AVRDUDE="$TOOLCHAIN/avrdude"
+
+# === FLAGS ===
+CFLAGS="-mmcu=$BOARD_MCU -DF_CPU=$F_CPU -Os -I$CORE_PATH -I$VARIANT_PATH"
+LDFLAGS="-mmcu=$BOARD_MCU"
+
+# === FONCTIONS ===
+
+build() {
+    echo "Compilation en cours..."
+    $CC $CFLAGS -c $SRC -o $TARGET.o || exit 1
+    $LD $LDFLAGS $TARGET.o $CORE_LIB -o $TARGET.elf || exit 1
+    $OBJCOPY -O ihex -R .eeprom $TARGET.elf $TARGET.hex || exit 1
+    echo "Compilation terminée : $TARGET.hex"
+}
+
+upload() {
+    echo "Téléversement sur la carte..."
+    $AVRDUDE -c arduino -p $BOARD_MCU -P $PORT -b $BAUD -U flash:w:$TARGET.hex || exit 1
+    echo "Téléversement terminé."
+}
+
+clean() {
+    echo "Nettoyage..."
+    rm -f *.o *.elf *.hex
+    echo "Nettoyage effectué."
+}
+
+help() {
+    echo "Usage : ./build.sh [commande]"
+    echo
+    echo "Commandes disponibles :"
+    echo "  build     -> compile le programme (.hex)"
+    echo "  upload    -> téléverse le binaire sur la carte"
+    echo "  clean     -> supprime les fichiers temporaires"
+    echo "  help      -> affiche cette aide"
+}
+
+# === LOGIQUE PRINCIPALE ===
+case "$1" in
+    build) build ;;
+    upload) upload ;;
+    clean) clean ;;
+    help|*) help ;;
+esac
+ script bash v2
